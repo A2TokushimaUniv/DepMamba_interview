@@ -1,0 +1,89 @@
+model: DepMamba
+dataset: dvlog # dvlog, lmvd, daicwoz, ours
+train: true # if false, only test
+data_dir: "datasets"
+train_gender: both
+test_gender: both
+epochs: 120
+run_num: 3
+batch_size: 16
+learning_rate: 8e-5
+lr_scheduler: cos
+save_dir: "results"
+gpu: "0"
+device:
+  - "cuda"
+
+if_wandb: false # if true, wandb will be used
+wandb_entity: "a2_multimodal_mental_health" # wandb team name
+wandb_project: "DepMamba_dvlog" # project name in team
+your_name: "kashihara" # name of person who performed the experiment
+
+# Mamba parameters
+mmmamba_dvlog:
+  audio_input_size: 25 # LDDs for D-Vlog
+  video_input_size: 136
+  mm_input_size: 256
+  mm_output_sizes: [256]
+  dropout: 0.1
+  d_ffn: 1024
+  num_layers: 1
+  activation: 'GELU'
+  causal: false
+
+  mamba_config:
+    d_state: 12
+    expand: 4
+    d_conv: 4
+    bidirectional: true
+
+mmmamba_lmvd:
+  audio_input_size: 128 # VGGish for LMVD
+  video_input_size: 136
+  mm_input_size: 256
+  mm_output_sizes: [256]
+  dropout: 0.1
+  d_ffn: 1024
+  num_layers: 1
+  activation: 'GELU'
+  causal: false
+
+  mamba_config:
+    d_state: 16 # NOTE: why 16?
+    expand: 4
+    d_conv: 4
+    bidirectional: true
+
+# mmmamba_daicwoz:
+#   audio_input_size: 128 # VGGish for LMVD
+#   video_input_size: 136
+#   mm_input_size: 256
+#   mm_output_sizes: [256]
+#   dropout: 0.1
+#   d_ffn: 1024
+#   num_layers: 1
+#   activation: 'GELU'
+#   causal: false
+
+#   mamba_config:
+#     d_state: 16
+#     expand: 4
+#     d_conv: 4
+#     bidirectional: true
+
+# mmmamba_ours:
+#   audio_input_size: 128 # VGGish for LMVD
+#   video_input_size: 136
+#   mm_input_size: 256
+#   mm_output_sizes: [256]
+#   dropout: 0.1
+#   d_ffn: 1024
+#   num_layers: 1
+#   activation: 'GELU'
+#   causal: false
+
+#   mamba_config:
+#     d_state: 16
+#     expand: 4
+#     d_conv: 4
+#     bidirectional: true

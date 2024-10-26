@@ -10,3 +10,5 @@ opensmile==2.5.0
 numpy==1.23.5
 librosa==0.10.0
 speechbrain==1.0.0
+logzero==1.7.0
+ruff==0.7.0

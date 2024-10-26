@@ -1,7 +1,7 @@
-'''
+"""
 Copied and modified from
 https://github.com/state-spaces/mamba/blob/main/mamba_ssm/models/mixer_seq_simple.py
-'''
+"""
 
 import math
 import torch
@@ -10,8 +10,10 @@ import torch.nn as nn
 from functools import partial
 
 from mamba_ssm import Mamba
-from modules.mamba.bimamba import Mamba as BiMamba 
+from modules.mamba.bimamba import Mamba as BiMamba
 from modules.mamba.bimamba import Block as PreNormBlock
+
+from logzero import logger
 
 try:
     from mamba_ssm.ops.triton.layernorm import RMSNorm, layer_norm_fn, rms_norm_fn
@@ -83,14 +85,7 @@ def _init_weights(
 
 
 class LnMambaAdd(nn.Module):
-
-    def __init__(self, 
-        d_model, 
-        ssm_cls, 
-        ssm_cfg,
-        rms_norm=False,
-        layer_idx=None
-    ):
+    def __init__(self, d_model, ssm_cls, ssm_cfg, rms_norm=False, layer_idx=None):
         super().__init__()
         if rms_norm:
             self.norm = RMSNorm(d_model)
@@ -98,9 +93,9 @@ class LnMambaAdd(nn.Module):
             self.norm = nn.LayerNorm(d_model)
         self.mamba = ssm_cls(d_model=d_model, **ssm_cfg)
 
-        print(type(self.mamba))
+        logger.info(type(self.mamba))
 
-        print('Created LnMambaAdd.')
+        logger.info("Created LnMambaAdd.")
 
     def forward(self, x, residual=None, inference_params=None):
         if residual != None:
@@ -129,14 +124,15 @@ class MambaBlocksSequential(nn.Module):
     ---------
     """
 
-    def __init__(self, 
+    def __init__(
+        self,
         n_mamba: int,
         bidirectional: bool,
-        d_model: int, # bottleneck dimension (B)
+        d_model: int,  # bottleneck dimension (B)
         d_state: int = 16,
         expand: int = 2,
-        d_conv: int = 4, # kernel_size of 'Conv' in Mamba
-        dt_rank: str="auto",
+        d_conv: int = 4,  # kernel_size of 'Conv' in Mamba
+        dt_rank: str = "auto",
         conv_bias: bool = True,
         bias: bool = False,
         fused_add_norm: bool = True,
@@ -144,7 +140,7 @@ class MambaBlocksSequential(nn.Module):
         norm_epsilon: float = 1e-5,
         initializer_cfg=None,
         residual_in_fp32=False,
-        use_simple_block=False
+        use_simple_block=False,
     ):
         super().__init__()
         self.residual_in_fp32 = residual_in_fp32
@@ -168,7 +164,7 @@ class MambaBlocksSequential(nn.Module):
             "d_conv": d_conv,
             "dt_rank": dt_rank,
             "conv_bias": conv_bias,
-            "bias": bias
+            "bias": bias,
         }
         if bidirectional:
             ssm_cfg["bimamba_type"] = "v2"
@@ -181,7 +177,7 @@ class MambaBlocksSequential(nn.Module):
                         ssm_cls=BiMamba if bidirectional else Mamba,
                         ssm_cfg=ssm_cfg,
                         rms_norm=rms_norm,
-                        layer_idx=i
+                        layer_idx=i,
                     )
                     for i in range(n_mamba)
                 ]
@@ -215,28 +211,32 @@ class MambaBlocksSequential(nn.Module):
             )
         )
 
-
     def allocate_inference_cache(self, batch_size, max_seqlen, dtype=None, **kwargs):
         return {
-            i: block.allocate_inference_cache(batch_size, max_seqlen, dtype=dtype, **kwargs)
+            i: block.allocate_inference_cache(
+                batch_size, max_seqlen, dtype=dtype, **kwargs
+            )
             for i, layer in enumerate(self.layers)
         }
-    
-    def forward(self, x, inference_params=None):
 
+    def forward(self, x, inference_params=None):
         hidden_states = x
         residual = None
         for i, layer in enumerate(self.layers):
             hidden_states, residual = layer(
                 hidden_states, residual, inference_params=inference_params
             )
-            
+
         if not self.fused_add_norm:
-            residual = (hidden_states + residual) if residual is not None else hidden_states
+            residual = (
+                (hidden_states + residual) if residual is not None else hidden_states
+            )
             hidden_states = self.norm_f(residual.to(dtype=self.norm_f.weight.dtype))
         else:
             # Set prenorm=False here since we don't need the residual
-            fused_add_norm_fn = rms_norm_fn if isinstance(self.norm_f, RMSNorm) else layer_norm_fn
+            fused_add_norm_fn = (
+                rms_norm_fn if isinstance(self.norm_f, RMSNorm) else layer_norm_fn
+            )
 
             hidden_states = fused_add_norm_fn(
                 hidden_states,
@@ -249,4 +249,3 @@ class MambaBlocksSequential(nn.Module):
             )
 
         return hidden_states
-        
