@@ -17,7 +17,7 @@
 </div>
 
 
-**If you want to train with our interview datasets, see [HowToTrainWithOurs](./HowToTrainWithOurs.md)</span>**
+**If you want to train with DAIC-WOZ or our interview datasets, see [HowToTrain.md](./HowToTrain.md)</span>**
 
 
 ### 📰 News
